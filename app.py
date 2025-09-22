@@ -3,9 +3,8 @@ import pandas as pd
 import io
 import qrcode
 import zipfile
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from PIL import Image, ImageDraw, ImageFont
-from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 # ================================
 # 應用程式標題與頁面設定
@@ -13,12 +12,15 @@ from streamlit.runtime.scriptrunner import get_script_run_ctx
 st.set_page_config(page_title="社區區權會投票")
 st.title("社區區權會多議題投票應用程式")
 
-# 🔹 自動取得目前 App 的公開網址
+# 🔹 自動取得目前 App 的公開網址（若失敗就用固定網址）
 def get_base_url():
-    ctx = get_script_run_ctx()
-    if ctx is None:
-        return ""
-    return ctx.request_headers.get("referer", "").rstrip("/")
+    try:
+        full_url = st.runtime.get_url()
+        parsed = urlparse(full_url)
+        return f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip("/")
+    except Exception:
+        # fallback 固定網址
+        return "https://acidcocco-community-voting-app-mzmbfqfjngzhskk7ugsgai.streamlit.app"
 
 APP_URL = get_base_url()
 
