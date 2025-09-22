@@ -45,10 +45,8 @@ def generate_qr_with_label(text, label):
     # 在圖片下方新增文字
     draw = ImageDraw.Draw(img_final)
     try:
-        # 使用一個適合的字體
         font = ImageFont.truetype("Arial.ttf", 30)
     except IOError:
-        # 如果找不到 Arial 字體，使用預設字體
         font = ImageFont.load_default()
     
     # 使用新的方式來計算文字寬度
@@ -71,7 +69,7 @@ query_params = st.query_params
 
 # 檢查 URL 中是否包含 '戶號' 參數
 if '戶號' in query_params:
-    household_id_from_url = query_params['戶號'][0]
+    household_id_from_url = query_params['戶號']
     
     # 確保資料已上傳
     if st.session_state.data is None:
@@ -104,7 +102,7 @@ if '戶號' in query_params:
                         }])
                         st.session_state[f'vote_results_{i}'] = pd.concat([st.session_state[f'vote_results_{i}'], new_vote], ignore_index=True)
                         st.success(f"投票成功！感謝 {voter_name} 您的參與。")
-                        st.experimental_rerun()
+                        st.rerun()
 
             if voted_issues_count == len(ISSUES):
                 st.success("您已完成所有議題的投票！")
@@ -118,10 +116,7 @@ else:
         household_id_manual = st.selectbox("請手動選擇您的戶號：", options=['請選擇'] + all_households)
         
         if household_id_manual != '請選擇':
-            parsed_url = urlparse(st.experimental_get_query_params())
-            query_params_dict = dict(parse_qs(parsed_url.query))
-            query_params_dict['戶號'] = [household_id_manual]
-            st.experimental_set_query_params(**query_params_dict)
+            st.query_params['戶號'] = household_id_manual
 
 # -----------------
 # 管理者報表區
@@ -149,17 +144,15 @@ if uploaded_file:
             if st.sidebar.button("產生所有 QR Code 壓縮檔"):
                 
                 # 自動取得當前應用程式的網址
-                base_url = st.experimental_get_query_params()
-                if "://" not in st.experimental_get_query_params():
-                    base_url = f"https://{st.experimental_get_query_params()}"
-                
+                current_url = f"https://{st.query_params.get_app_root()}"
+
                 if 'data' in st.session_state and not st.session_state.data.empty:
                     zip_buffer = io.BytesIO()
                     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
                         for household_id in st.session_state.data.index.tolist():
                             # 組合帶有戶號參數的 URL
                             params = {'戶號': household_id}
-                            full_url = f"{base_url}?{urlencode(params)}"
+                            full_url = f"{current_url}?{urlencode(params)}"
                             
                             # 產生帶有標籤的 QR Code
                             img = generate_qr_with_label(full_url, f"戶號: {household_id}")
@@ -189,15 +182,10 @@ if uploaded_file:
             household_for_qr = st.sidebar.selectbox("請選擇要產生 QR Code 的戶號：", options=['請選擇'] + st.session_state.data.index.tolist())
             
             if household_for_qr != '請選擇':
-                # 自動取得當前應用程式的網址
-                base_url = st.experimental_get_query_params()
-                if "://" not in st.experimental_get_query_params():
-                    base_url = f"https://{st.experimental_get_query_params()}"
-                
+                current_url = f"https://{st.query_params.get_app_root()}"
                 params = {'戶號': household_for_qr}
-                full_url = f"{base_url}?{urlencode(params)}"
+                full_url = f"{current_url}?{urlencode(params)}"
                 
-                # 產生帶有標籤的 QR Code
                 img = generate_qr_with_label(full_url, f"戶號: {household_for_qr}")
                 
                 buf = io.BytesIO()
@@ -241,17 +229,4 @@ if st.session_state.data is not None:
             
             col1, col2 = st.columns(2)
             with col1:
-                st.metric(label="同意票數", value=agree_count, delta=f"{agree_ratio:.2%}")
-                st.write("區分比例：", f"{agree_ratio:.2%}")
-            
-            with col2:
-                st.metric(label="不同意票數", value=disagree_count, delta=f"{disagree_ratio:.2%}")
-                st.write("區分比例：", f"{disagree_ratio:.2%}")
-                
-            st.write("已投票清單：")
-            st.dataframe(vote_results[['戶號', '姓名', '投票']])
-        else:
-            st.info("尚無投票記錄。")
-        st.write("---")
-else:
-    st.info("請先上傳名冊檔案以查看報表。")
+                st.metric(label="同意票數",
