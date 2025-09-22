@@ -123,6 +123,12 @@ else:
 st.sidebar.header("管理者專區")
 st.sidebar.markdown("請先上傳名冊檔案")
 
+# 讓使用者手動輸入應用程式網址，並儲存在 session_state
+if 'app_url' not in st.session_state:
+    st.session_state.app_url = ""
+st.session_state.app_url = st.sidebar.text_input("輸入您的應用程式網址：", st.session_state.app_url)
+
+
 uploaded_file = st.sidebar.file_uploader("上傳區分所有權人名冊 (Excel 檔案)", type=["xlsx"])
 
 if uploaded_file:
@@ -137,66 +143,68 @@ if uploaded_file:
             
             st.sidebar.divider()
             st.sidebar.subheader("QR Code 產生器")
-            
-            # 批次產生 QR Code 功能
-            st.sidebar.markdown("##### 批次產生所有戶號的 QR Code")
-            if st.sidebar.button("產生所有 QR Code 壓縮檔"):
-                # 自動取得當前應用程式的網址
-                current_url = f"https://{st.query_params['app_host']}{st.query_params['app_path']}"
-                
-                if 'data' in st.session_state and not st.session_state.data.empty:
-                    zip_buffer = io.BytesIO()
-                    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                        for household_id in st.session_state.data.index.tolist():
-                            # 組合帶有戶號參數的 URL
-                            params = {'戶號': household_id}
-                            full_url = f"{current_url}?{urlencode(params)}"
-                            
-                            # 產生帶有標籤的 QR Code
-                            img = generate_qr_with_label(full_url, f"戶號: {household_id}")
-                            
-                            # 將圖片存入 buffer
-                            img_buffer = io.BytesIO()
-                            img.save(img_buffer, format="PNG")
-                            img_buffer.seek(0)
-                            
-                            # 將圖片加入 zip 檔案
-                            zipf.writestr(f"{household_id}_qrcode.png", img_buffer.read())
-                    
-                    st.sidebar.download_button(
-                        label="下載 QR Code 壓縮檔",
-                        data=zip_buffer.getvalue(),
-                        file_name="all_qrcodes.zip",
-                        mime="application/zip"
-                    )
-                    st.sidebar.success("QR Code 壓縮檔已產生！請點擊上方按鈕下載。")
-                else:
-                    st.sidebar.warning("請先上傳區分所有權人名冊。")
 
-            st.sidebar.markdown("---")
-            
-            # 單一產生 QR Code 功能
-            st.sidebar.markdown("##### 單一產生 QR Code")
-            household_for_qr = st.sidebar.selectbox("請選擇要產生 QR Code 的戶號：", options=['請選擇'] + st.session_state.data.index.tolist())
-            
-            if household_for_qr != '請選擇':
-                current_url = f"https://{st.query_params['app_host']}{st.query_params['app_path']}"
-                params = {'戶號': household_for_qr}
-                full_url = f"{current_url}?{urlencode(params)}"
+            if st.session_state.app_url == "":
+                st.sidebar.warning("請先輸入您的應用程式網址。")
+            else:
+                # 批次產生 QR Code 功能
+                st.sidebar.markdown("##### 批次產生所有戶號的 QR Code")
+                if st.sidebar.button("產生所有 QR Code 壓縮檔"):
+                    current_url = st.session_state.app_url
+                    
+                    if 'data' in st.session_state and not st.session_state.data.empty:
+                        zip_buffer = io.BytesIO()
+                        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                            for household_id in st.session_state.data.index.tolist():
+                                # 組合帶有戶號參數的 URL
+                                params = {'戶號': household_id}
+                                full_url = f"{current_url}?{urlencode(params)}"
+                                
+                                # 產生帶有標籤的 QR Code
+                                img = generate_qr_with_label(full_url, f"戶號: {household_id}")
+                                
+                                # 將圖片存入 buffer
+                                img_buffer = io.BytesIO()
+                                img.save(img_buffer, format="PNG")
+                                img_buffer.seek(0)
+                                
+                                # 將圖片加入 zip 檔案
+                                zipf.writestr(f"{household_id}_qrcode.png", img_buffer.read())
+                        
+                        st.sidebar.download_button(
+                            label="下載 QR Code 壓縮檔",
+                            data=zip_buffer.getvalue(),
+                            file_name="all_qrcodes.zip",
+                            mime="application/zip"
+                        )
+                        st.sidebar.success("QR Code 壓縮檔已產生！請點擊上方按鈕下載。")
+                    else:
+                        st.sidebar.warning("請先上傳區分所有權人名冊。")
+
+                st.sidebar.markdown("---")
                 
-                img = generate_qr_with_label(full_url, f"戶號: {household_for_qr}")
+                # 單一產生 QR Code 功能
+                st.sidebar.markdown("##### 單一產生 QR Code")
+                household_for_qr = st.sidebar.selectbox("請選擇要產生 QR Code 的戶號：", options=['請選擇'] + st.session_state.data.index.tolist())
                 
-                buf = io.BytesIO()
-                img.save(buf, format="PNG")
-                img_str = base64.b64encode(buf.getvalue()).decode()
-                st.sidebar.markdown(f"#### 戶號: {household_for_qr}")
-                st.sidebar.image(img, caption="請掃描此 QR Code 進行投票")
-                st.sidebar.download_button(
-                    label="下載 QR Code 圖片",
-                    data=buf.getvalue(),
-                    file_name=f"{household_for_qr}_qrcode.png",
-                    mime="image/png"
-                )
+                if household_for_qr != '請選擇':
+                    current_url = st.session_state.app_url
+                    params = {'戶號': household_for_qr}
+                    full_url = f"{current_url}?{urlencode(params)}"
+                    
+                    img = generate_qr_with_label(full_url, f"戶號: {household_for_qr}")
+                    
+                    buf = io.BytesIO()
+                    img.save(buf, format="PNG")
+                    img_str = base64.b64encode(buf.getvalue()).decode()
+                    st.sidebar.markdown(f"#### 戶號: {household_for_qr}")
+                    st.sidebar.image(img, caption="請掃描此 QR Code 進行投票")
+                    st.sidebar.download_button(
+                        label="下載 QR Code 圖片",
+                        data=buf.getvalue(),
+                        file_name=f"{household_for_qr}_qrcode.png",
+                        mime="image/png"
+                    )
 
     except Exception as e:
         st.sidebar.error(f"讀取檔案時發生錯誤：{e}")
