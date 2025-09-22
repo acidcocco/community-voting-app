@@ -4,7 +4,7 @@ import io
 import qrcode
 import base64
 import zipfile
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+from urllib.parse import urlencode
 from PIL import Image, ImageDraw, ImageFont
 
 # 應用程式標題
@@ -15,7 +15,7 @@ st.title("社區區權會多議題投票應用程式")
 ISSUES = [
     "議題一：是否同意實施社區公設改善工程？",
     "議題二：是否同意調整社區管理費？",
-    "議題三：是否同意續聘現有物業管理公司？"
+    "議題三：是否同意更新VIP室天花板？"
 ]
 
 # 針對每個議題建立獨立的 vote_results DataFrame
@@ -71,7 +71,6 @@ query_params = st.query_params
 if '戶號' in query_params:
     household_id_from_url = query_params['戶號']
     
-    # 確保資料已上傳
     if st.session_state.data is None:
         st.error("請先請管理者上傳區分所有權人名冊。")
     else:
@@ -142,10 +141,9 @@ if uploaded_file:
             # 批次產生 QR Code 功能
             st.sidebar.markdown("##### 批次產生所有戶號的 QR Code")
             if st.sidebar.button("產生所有 QR Code 壓縮檔"):
-                
                 # 自動取得當前應用程式的網址
-                current_url = f"https://{st.query_params.get_app_root()}"
-
+                current_url = f"https://{st.query_params['app_host']}{st.query_params['app_path']}"
+                
                 if 'data' in st.session_state and not st.session_state.data.empty:
                     zip_buffer = io.BytesIO()
                     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -182,7 +180,7 @@ if uploaded_file:
             household_for_qr = st.sidebar.selectbox("請選擇要產生 QR Code 的戶號：", options=['請選擇'] + st.session_state.data.index.tolist())
             
             if household_for_qr != '請選擇':
-                current_url = f"https://{st.query_params.get_app_root()}"
+                current_url = f"https://{st.query_params['app_host']}{st.query_params['app_path']}"
                 params = {'戶號': household_for_qr}
                 full_url = f"{current_url}?{urlencode(params)}"
                 
