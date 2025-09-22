@@ -150,7 +150,7 @@ if uploaded_file:
             if st.sidebar.button("產生所有 QR Code 壓縮檔"):
                 
                 # 取得您部署後的網址
-                base_url = "https://your-app-url.streamlit.app" # 請替換成您實際的應用程式網址
+                base_url = "https://acidcocco-community-voting-app-mzmbfqfjngzhskk7ugsgai.streamlit.app" # 請替換成您實際的應用程式網址
 
                 if 'data' in st.session_state and not st.session_state.data.empty:
                     zip_buffer = io.BytesIO()
@@ -188,7 +188,7 @@ if uploaded_file:
             household_for_qr = st.sidebar.selectbox("請選擇要產生 QR Code 的戶號：", options=['請選擇'] + st.session_state.data.index.tolist())
             
             if household_for_qr != '請選擇':
-                base_url = "https://your-app-url.streamlit.app" # 請替換成您實際的應用程式網址
+                base_url = "https://acidcocco-community-voting-app-mzmbfqfjngzhskk7ugsgai.streamlit.app" # 請替換成您實際的應用程式網址
                 params = {'戶號': household_for_qr}
                 full_url = f"{base_url}?{urlencode(params)}"
                 
@@ -250,4 +250,5 @@ if st.session_state.data is not None:
         st.write("---")
 else:
     st.info("請先上傳名冊檔案以查看報表。")
+
 
