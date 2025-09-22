@@ -15,7 +15,7 @@ st.title("社區區權會多議題投票應用程式")
 ISSUES = [
     "議題一：是否同意實施社區公設改善工程？",
     "議題二：是否同意調整社區管理費？",
-    "議題三：是否同意更新VIP室天花板？"
+    "議題三：是否同意續聘現有物業管理公司？"
 ]
 
 # 針對每個議題建立獨立的 vote_results DataFrame
@@ -229,4 +229,17 @@ if st.session_state.data is not None:
             
             col1, col2 = st.columns(2)
             with col1:
-                st.metric(label="同意票數",
+                st.metric(label="同意票數", value=agree_count, delta=f"{agree_ratio:.2%}")
+                st.write("區分比例：", f"{agree_ratio:.2%}")
+            
+            with col2:
+                st.metric(label="不同意票數", value=disagree_count, delta=f"{disagree_ratio:.2%}")
+                st.write("區分比例：", f"{disagree_ratio:.2%}")
+                
+            st.write("已投票清單：")
+            st.dataframe(vote_results[['戶號', '姓名', '投票']])
+        else:
+            st.info("尚無投票記錄。")
+        st.write("---")
+else:
+    st.info("請先上傳名冊檔案以查看報表。")
