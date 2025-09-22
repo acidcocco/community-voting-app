@@ -110,13 +110,7 @@ if household_id_from_url:
         else:
             st.error("您掃描的 QR Code 無效。請確認您使用的是正確的投票連結。")
 else:
-    st.warning("請選擇您的戶號或掃描您的專屬 QR Code。")
-    if st.session_state.data is not None:
-        all_households = st.session_state.data.index.tolist()
-        household_id_manual = st.selectbox("請手動選擇您的戶號：", options=['請選擇'] + all_households)
-        
-        if household_id_manual != '請選擇':
-            st.query_params['戶號'] = household_id_manual
+    st.warning("請掃描您的專屬 QR Code 以進行投票。")
 
 # -----------------
 # 管理者報表區
