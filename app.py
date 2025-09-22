@@ -111,6 +111,13 @@ if household_id_from_url:
             st.error("您掃描的 QR Code 無效。請確認您使用的是正確的投票連結。")
 else:
     st.warning("請掃描您的專屬 QR Code 以進行投票。")
+    st.markdown("或在管理者上傳名冊後，從下拉式選單選擇戶號。")
+    if st.session_state.data is not None:
+        all_households = st.session_state.data.index.tolist()
+        household_id_manual = st.selectbox("請手動選擇您的戶號：", options=['請選擇'] + all_households)
+        
+        if household_id_manual != '請選擇':
+            st.query_params['戶號'] = household_id_manual
 
 # -----------------
 # 管理者報表區
