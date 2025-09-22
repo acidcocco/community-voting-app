@@ -1,0 +1,177 @@
+import streamlit as st
+import pandas as pd
+import io
+import qrcode
+import base64
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+
+# 應用程式標題
+st.title("社區區權會多議題投票應用程式")
+
+# 設定議題清單
+# --- 在這裡輸入您的所有議題內容 ---
+ISSUES = [
+    "議題一：是否同意實施社區公設改善工程？",
+    "議題二：是否同意調整社區管理費？",
+    "議題三：是否同意續聘現有物業管理公司？"
+]
+
+# 針對每個議題建立獨立的 vote_results DataFrame
+for i, issue in enumerate(ISSUES):
+    if f'vote_results_{i}' not in st.session_state:
+        st.session_state[f'vote_results_{i}'] = pd.DataFrame(columns=['戶號', '姓名', '區分比例', '投票'])
+    
+if 'data' not in st.session_state:
+    st.session_state.data = None
+
+# -----------------
+# 投票界面
+# -----------------
+st.header("住戶投票區")
+st.divider()
+
+# 取得 URL 參數
+query_params = st.query_params
+
+# 檢查 URL 中是否包含 '戶號' 參數
+if '戶號' in query_params:
+    household_id_from_url = query_params['戶號'][0]
+    
+    # 確保資料已上傳
+    if st.session_state.data is None:
+        st.error("請先請管理者上傳區分所有權人名冊。")
+    else:
+        if household_id_from_url in st.session_state.data.index:
+            household_id = household_id_from_url
+            voter_name = st.session_state.data.loc[household_id, '姓名']
+            st.info(f"歡迎 {voter_name} 戶！您的戶號是 **{household_id}**。")
+
+            st.subheader("請對以下所有議題進行投票：")
+            
+            # 使用迴圈顯示所有議題
+            voted_issues_count = 0
+            for i, issue in enumerate(ISSUES):
+                st.markdown(f"**{issue}**")
+                
+                # 檢查該戶號是否已對此議題投過票
+                if household_id in st.session_state[f'vote_results_{i}']['戶號'].values:
+                    st.success("您已完成此議題的投票。")
+                    voted_issues_count += 1
+                else:
+                    vote_option = st.radio("您的選擇：", ('同意', '不同意'), key=f"radio_{i}")
+                    
+                    if st.button(f"確認對「議題 {i+1}」投票", key=f"button_{i}"):
+                        voter_data = st.session_state.data.loc[household_id]
+                        new_vote = pd.DataFrame([{
+                            '戶號': household_id,
+                            '姓名': voter_data['姓名'],
+                            '區分比例': voter_data['區分比例'],
+                            '投票': vote_option
+                        }])
+                        st.session_state[f'vote_results_{i}'] = pd.concat([st.session_state[f'vote_results_{i}'], new_vote], ignore_index=True)
+                        st.success(f"投票成功！感謝 {voter_name} 您的參與。")
+                        st.experimental_rerun() # 重新整理頁面以更新投票狀態
+
+            if voted_issues_count == len(ISSUES):
+                st.success("您已完成所有議題的投票！")
+                
+        else:
+            st.error("您掃描的 QR Code 無效。請確認您使用的是正確的投票連結。")
+else:
+    st.warning("請選擇您的戶號或掃描您的專屬 QR Code。")
+    if st.session_state.data is not None:
+        all_households = st.session_state.data.index.tolist()
+        household_id_manual = st.selectbox("請手動選擇您的戶號：", options=['請選擇'] + all_households)
+        
+        if household_id_manual != '請選擇':
+            parsed_url = urlparse(st.experimental_get_query_params())
+            query_params_dict = dict(parse_qs(parsed_url.query))
+            query_params_dict['戶號'] = [household_id_manual]
+            st.experimental_set_query_params(**query_params_dict)
+
+# -----------------
+# 管理者報表區
+# -----------------
+st.sidebar.header("管理者專區")
+st.sidebar.markdown("請先上傳名冊檔案")
+
+uploaded_file = st.sidebar.file_uploader("上傳區分所有權人名冊 (Excel 檔案)", type=["xlsx"])
+
+if uploaded_file:
+    try:
+        df = pd.read_excel(uploaded_file)
+        required_columns = ['戶號', '姓名', '區分比例']
+        if not all(col in df.columns for col in required_columns):
+            st.sidebar.error("Excel 檔案中缺少必要的欄位。請確認檔案包含 '戶號', '姓名' 和 '區分比例'。")
+        else:
+            st.sidebar.success("檔案上傳成功！")
+            st.session_state.data = df.set_index('戶號')
+            
+            st.sidebar.divider()
+            st.sidebar.subheader("QR Code 產生器")
+            household_for_qr = st.sidebar.selectbox("請選擇要產生 QR Code 的戶號：", options=['請選擇'] + st.session_state.data.index.tolist())
+            
+            if household_for_qr != '請選擇':
+                base_url = "https://your-app-url.streamlit.app" # 請替換成您實際的應用程式網址
+                params = {'戶號': household_for_qr}
+                full_url = f"{base_url}?{urlencode(params)}"
+                qr = qrcode.QRCode(version=1, box_size=10, border=4)
+                qr.add_data(full_url)
+                qr.make(fit=True)
+                img = qr.make_image(fill_color="black", back_color="white")
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                img_str = base64.b64encode(buf.getvalue()).decode()
+                st.sidebar.markdown(f"#### 戶號: {household_for_qr}")
+                st.sidebar.image(img, caption="請掃描此 QR Code 進行投票")
+                st.sidebar.markdown(f"**投票連結：** `{full_url}`")
+                st.sidebar.download_button(
+                    label="下載 QR Code 圖片",
+                    data=buf.getvalue(),
+                    file_name=f"{household_for_qr}_qrcode.png",
+                    mime="image/png"
+                )
+
+    except Exception as e:
+        st.sidebar.error(f"讀取檔案時發生錯誤：{e}")
+
+# -----------------
+# 報表顯示區
+# -----------------
+st.divider()
+st.header("投票即時報表")
+if st.session_state.data is not None:
+    for i, issue in enumerate(ISSUES):
+        st.subheader(f"📊 {issue}")
+        vote_results = st.session_state[f'vote_results_{i}']
+
+        if not vote_results.empty:
+            total_votes = len(vote_results)
+            st.info(f"目前總投票人數：{total_votes}")
+            
+            agree_votes = vote_results[vote_results['投票'] == '同意']
+            disagree_votes = vote_results[vote_results['投票'] == '不同意']
+            
+            agree_count = len(agree_votes)
+            disagree_count = len(disagree_votes)
+            
+            total_ratio = st.session_state.data['區分比例'].sum()
+            agree_ratio = agree_votes['區分比例'].sum()
+            disagree_ratio = disagree_votes['區分比例'].sum()
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric(label="同意票數", value=agree_count, delta=f"{agree_ratio:.2%}")
+                st.write("區分比例：", f"{agree_ratio:.2%}")
+            
+            with col2:
+                st.metric(label="不同意票數", value=disagree_count, delta=f"{disagree_ratio:.2%}")
+                st.write("區分比例：", f"{disagree_ratio:.2%}")
+                
+            st.write("已投票清單：")
+            st.dataframe(vote_results[['戶號', '姓名', '投票']])
+        else:
+            st.info("尚無投票記錄。")
+        st.write("---")
+else:
+    st.info("請先上傳名冊檔案以查看報表。")
