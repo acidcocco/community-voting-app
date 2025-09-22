@@ -15,7 +15,7 @@ st.title("社區區權會多議題投票應用程式")
 ISSUES = [
     "議題一：是否同意實施社區公設改善工程？",
     "議題二：是否同意調整社區管理費？",
-    "議題三：是否同意續聘現有物業管理公司？"
+    "議題三：是否同意更新VIP室天花板？"
 ]
 
 # 針對每個議題建立獨立的 vote_results DataFrame
@@ -250,3 +250,4 @@ if st.session_state.data is not None:
         st.write("---")
 else:
     st.info("請先上傳名冊檔案以查看報表。")
+
