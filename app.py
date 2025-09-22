@@ -46,7 +46,6 @@ def generate_qr_with_label(text, label):
     draw = ImageDraw.Draw(img_final)
     try:
         # 使用一個適合的字體
-        # 由於 'textsize' 已被棄用，我們使用 'textlength'
         font = ImageFont.truetype("Arial.ttf", 30)
     except IOError:
         # 如果找不到 Arial 字體，使用預設字體
@@ -149,9 +148,11 @@ if uploaded_file:
             st.sidebar.markdown("##### 批次產生所有戶號的 QR Code")
             if st.sidebar.button("產生所有 QR Code 壓縮檔"):
                 
-                # 取得您部署後的網址
-                base_url = "https://acidcocco-community-voting-app-mzmbfqfjngzhskk7ugsgai.streamlit.app" # 請替換成您實際的應用程式網址
-
+                # 自動取得當前應用程式的網址
+                base_url = st.experimental_get_query_params()
+                if "://" not in st.experimental_get_query_params():
+                    base_url = f"https://{st.experimental_get_query_params()}"
+                
                 if 'data' in st.session_state and not st.session_state.data.empty:
                     zip_buffer = io.BytesIO()
                     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -188,7 +189,11 @@ if uploaded_file:
             household_for_qr = st.sidebar.selectbox("請選擇要產生 QR Code 的戶號：", options=['請選擇'] + st.session_state.data.index.tolist())
             
             if household_for_qr != '請選擇':
-                base_url = "https://acidcocco-community-voting-app-mzmbfqfjngzhskk7ugsgai.streamlit.app" # 請替換成您實際的應用程式網址
+                # 自動取得當前應用程式的網址
+                base_url = st.experimental_get_query_params()
+                if "://" not in st.experimental_get_query_params():
+                    base_url = f"https://{st.experimental_get_query_params()}"
+                
                 params = {'戶號': household_for_qr}
                 full_url = f"{base_url}?{urlencode(params)}"
                 
@@ -250,5 +255,3 @@ if st.session_state.data is not None:
         st.write("---")
 else:
     st.info("請先上傳名冊檔案以查看報表。")
-
-
