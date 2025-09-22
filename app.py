@@ -50,7 +50,6 @@ def generate_qr_with_label(text, label):
     except IOError:
         font = ImageFont.load_default()
     
-    # 使用新的方式來計算文字寬度
     text_width = draw.textlength(label, font=font)
     
     text_x = (width - text_width) / 2
@@ -65,13 +64,10 @@ def generate_qr_with_label(text, label):
 st.header("住戶投票區")
 st.divider()
 
-# 取得 URL 參數
 query_params = st.query_params
 household_id_from_url = query_params.get("戶號")
 
-# 檢查 URL 中是否包含 '戶號' 參數
 if household_id_from_url:
-    # 確保資料已上傳
     if st.session_state.data is None:
         st.error("請先請管理者上傳區分所有權人名冊。")
     else:
@@ -139,37 +135,26 @@ if uploaded_file:
             st.sidebar.divider()
             st.sidebar.subheader("QR Code 產生器")
             
-            # 獲取應用程式的 URL
-            scheme = st.experimental_get_query_params.get("scheme", ["https"])[0]
-            host = st.experimental_get_query_params.get("host", [None])[0]
-            
-            if host:
-                base_url = urlunsplit((scheme, host, "", "", ""))
-            else:
-                st.sidebar.warning("無法自動獲取應用程式網址。請在瀏覽器網址列複製並貼上您的公開網址。")
-                base_url = st.sidebar.text_input("輸入您的應用程式網址：", "https://your-app-url.streamlit.app")
+            # 手動輸入應用程式網址，以確保穩定性
+            base_url = st.sidebar.text_input("輸入您的應用程式網址：", "")
 
-            # 批次產生 QR Code 功能
-            st.sidebar.markdown("##### 批次產生所有戶號的 QR Code")
-            if st.sidebar.button("產生所有 QR Code 壓縮檔"):
-                if base_url:
+            if base_url:
+                # 批次產生 QR Code 功能
+                st.sidebar.markdown("##### 批次產生所有戶號的 QR Code")
+                if st.sidebar.button("產生所有 QR Code 壓縮檔"):
                     if 'data' in st.session_state and not st.session_state.data.empty:
                         zip_buffer = io.BytesIO()
                         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
                             for household_id in st.session_state.data.index.tolist():
-                                # 組合帶有戶號參數的 URL
                                 params = {'戶號': household_id}
                                 full_url = f"{base_url}?{urlencode(params)}"
                                 
-                                # 產生帶有標籤的 QR Code
                                 img = generate_qr_with_label(full_url, f"戶號: {household_id}")
                                 
-                                # 將圖片存入 buffer
                                 img_buffer = io.BytesIO()
                                 img.save(img_buffer, format="PNG")
                                 img_buffer.seek(0)
                                 
-                                # 將圖片加入 zip 檔案
                                 zipf.writestr(f"{household_id}_qrcode.png", img_buffer.read())
                         
                         st.sidebar.download_button(
@@ -181,21 +166,17 @@ if uploaded_file:
                         st.sidebar.success("QR Code 壓縮檔已產生！請點擊上方按鈕下載。")
                     else:
                         st.sidebar.warning("請先上傳區分所有權人名冊。")
-                else:
-                    st.sidebar.error("請先提供有效的應用程式網址。")
 
 
-            st.sidebar.markdown("---")
-            
-            # 單一產生 QR Code 功能
-            st.sidebar.markdown("##### 單一產生 QR Code")
-            household_for_qr = st.sidebar.selectbox("請選擇要產生 QR Code 的戶號：", options=['請選擇'] + st.session_state.data.index.tolist())
-            
-            if household_for_qr != '請選擇':
-                if base_url:
-                    current_url = base_url
+                st.sidebar.markdown("---")
+                
+                # 單一產生 QR Code 功能
+                st.sidebar.markdown("##### 單一產生 QR Code")
+                household_for_qr = st.sidebar.selectbox("請選擇要產生 QR Code 的戶號：", options=['請選擇'] + st.session_state.data.index.tolist())
+                
+                if household_for_qr != '請選擇':
                     params = {'戶號': household_for_qr}
-                    full_url = f"{current_url}?{urlencode(params)}"
+                    full_url = f"{base_url}?{urlencode(params)}"
                     
                     img = generate_qr_with_label(full_url, f"戶號: {household_for_qr}")
                     
@@ -209,8 +190,6 @@ if uploaded_file:
                         file_name=f"{household_for_qr}_qrcode.png",
                         mime="image/png"
                     )
-                else:
-                    st.sidebar.error("請先提供有效的應用程式網址。")
 
     except Exception as e:
         st.sidebar.error(f"讀取檔案時發生錯誤：{e}")
