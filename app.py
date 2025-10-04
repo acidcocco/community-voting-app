@@ -71,10 +71,12 @@ def generate_qr_with_label(text, label):
 st.header("住戶投票區")
 st.divider()
 
+# 檢查 URL 參數以判斷是否有戶號資訊
 query_params = st.query_params
 household_id_from_url = query_params.get("戶號")
 
 if household_id_from_url:
+    # 這裡的邏輯是關鍵：檢查 session_state 中是否已有名冊數據
     if st.session_state.data is None:
         st.error("請先請管理者上傳區分所有權人名冊。")
     else:
@@ -111,10 +113,10 @@ if household_id_from_url:
 
             if voted_issues_count == len(ISSUES):
                 st.success("您已完成所有議題的投票！")
-
         else:
             st.error("您掃描的 QR Code 無效。請確認您使用的是正確的投票連結。")
 else:
+    # 如果 URL 中沒有戶號參數，顯示手動選擇界面
     st.warning("請掃描您的專屬 QR Code 以進行投票。")
     st.markdown("或在管理者上傳名冊後，從下拉式選單選擇戶號。")
     if st.session_state.data is not None:
