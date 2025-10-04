@@ -14,7 +14,7 @@ st.set_page_config(page_title="社區區權會投票")
 st.title("社區區權會多議題投票應用程式")
 
 # 設定您的應用程式公開網址
-# 如果您重新部署或網址變動，請務必更新此處
+# 請將這裡的網址替換為你實際的 Render.com 網址
 APP_URL = "https://acidcocco.onrender.com"
 
 # ================================
@@ -30,6 +30,9 @@ ISSUES = [
 for i, issue in enumerate(ISSUES):
     if f'vote_results_{i}' not in st.session_state:
         st.session_state[f'vote_results_{i}'] = pd.DataFrame(columns=['戶號', '姓名', '區分比例', '投票'])
+
+if 'data' not in st.session_state:
+    st.session_state.data = None
 
 # ================================
 # 圖片處理函式
@@ -85,8 +88,8 @@ if household_id_from_url:
     else:
         if household_id_from_url in st.session_state.data.index:
             household_id = household_id_from_url
-            voter_name = st.session_state.data.loc[household_id, '姓名']
-            st.info(f"歡迎 {voter_name} 戶！您的戶號是 **{household_id}**。")
+            # 這裡的程式碼已修正，只顯示戶號
+            st.info(f"歡迎戶號 **{household_id}**！")
 
             st.subheader("請對以下所有議題進行投票：")
 
@@ -111,7 +114,7 @@ if household_id_from_url:
                             [st.session_state[f'vote_results_{i}'], new_vote],
                             ignore_index=True
                         )
-                        st.success(f"投票成功！感謝 {voter_name} 您的參與。")
+                        st.success(f"投票成功！感謝您的參與。")
                         st.rerun()
 
             if voted_issues_count == len(ISSUES):
@@ -219,11 +222,11 @@ if 'data' in st.session_state and st.session_state.data is not None:
             
             col1, col2 = st.columns(2)
             with col1:
-                st.metric(label="同意票數", value=agree_count, delta=f"{agree_ratio:.2%}")
-                st.write("區分比例：", f"{agree_ratio:.2%}")
+                st.metric(label="同意票數", value=agree_count, delta=f"{agree_ratio:.4f}")
+                st.write("區分比例：", f"{agree_ratio:.4f}")
             with col2:
-                st.metric(label="不同意票數", value=disagree_count, delta=f"{disagree_ratio:.2%}")
-                st.write("區分比例：", f"{disagree_ratio:.2%}")
+                st.metric(label="不同意票數", value=disagree_count, delta=f"{disagree_ratio:.4f}")
+                st.write("區分比例：", f"{disagree_ratio:.4f}")
             
             st.write("已投票清單：")
             st.dataframe(vote_results[['戶號', '姓名', '投票']])
