@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 import io
 import qrcode
+import base64
 import zipfile
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode
 from PIL import Image, ImageDraw, ImageFont
 
 # ================================
@@ -12,17 +13,9 @@ from PIL import Image, ImageDraw, ImageFont
 st.set_page_config(page_title="社區區權會投票")
 st.title("社區區權會多議題投票應用程式")
 
-# 🔹 自動取得目前 App 的公開網址（若失敗就用固定網址）
-def get_base_url():
-    try:
-        full_url = st.runtime.get_url()
-        parsed = urlparse(full_url)
-        return f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip("/")
-    except Exception:
-        # fallback 固定網址
-        return "https://acidcocco-community-voting-app-mzmbfqfjngzhskk7ugsgai.streamlit.app"
-
-APP_URL = get_base_url()
+# 設定您的應用程式公開網址
+# 請將這裡的網址替換為你實際的 Render.com 網址
+APP_URL = "https://acidcocco.onrender.com"
 
 # ================================
 # 議題清單
@@ -193,10 +186,8 @@ if uploaded_file:
                 params = {'戶號': household_for_qr}
                 full_url = f"{APP_URL}?{urlencode(params)}"
                 img = generate_qr_with_label(full_url, f"戶號: {household_for_qr}")
-
                 buf = io.BytesIO()
                 img.save(buf, format="PNG")
-
                 st.sidebar.markdown(f"#### 戶號: {household_for_qr}")
                 st.sidebar.image(img, caption="請掃描此 QR Code 進行投票")
                 st.sidebar.download_button(
@@ -219,20 +210,19 @@ if st.session_state.data is not None:
     for i, issue in enumerate(ISSUES):
         st.subheader(f"📊 {issue}")
         vote_results = st.session_state[f'vote_results_{i}']
-
         if not vote_results.empty:
             total_votes = len(vote_results)
             st.info(f"目前總投票人數：{total_votes}")
-
+            
             agree_votes = vote_results[vote_results['投票'] == '同意']
             disagree_votes = vote_results[vote_results['投票'] == '不同意']
-
+            
             agree_count = len(agree_votes)
             disagree_count = len(disagree_votes)
-
+            
             agree_ratio = agree_votes['區分比例'].sum()
             disagree_ratio = disagree_votes['區分比例'].sum()
-
+            
             col1, col2 = st.columns(2)
             with col1:
                 st.metric(label="同意票數", value=agree_count, delta=f"{agree_ratio:.2%}")
@@ -240,7 +230,7 @@ if st.session_state.data is not None:
             with col2:
                 st.metric(label="不同意票數", value=disagree_count, delta=f"{disagree_ratio:.2%}")
                 st.write("區分比例：", f"{disagree_ratio:.2%}")
-
+            
             st.write("已投票清單：")
             st.dataframe(vote_results[['戶號', '姓名', '投票']])
         else:
