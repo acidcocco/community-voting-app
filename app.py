@@ -13,20 +13,9 @@ from PIL import Image, ImageDraw, ImageFont
 st.set_page_config(page_title="社區區權會投票")
 st.title("社區區權會多議題投票應用程式")
 
-# 自動獲取應用程式的 URL
-def get_app_url():
-    """
-    此函式嘗試在 Streamlit Cloud 或本地端自動獲取 URL。
-    如果失敗，則使用一個備用的固定網址。
-    """
-    try:
-        url = st.runtime.get_url()
-        return url.split('?')[0] # 移除任何現有參數
-    except Exception:
-        # Fallback to a fixed URL for local testing or unexpected errors
-        return "https://acidcocco-community-voting-app-mzmbfqfjngzhskk7ugsgai.streamlit.app"
-
-APP_URL = get_app_url()
+# 設定您的應用程式公開網址
+# 請將這裡的網址替換為你實際的 Render.com 網址
+APP_URL = "https://acidcocco.onrender.com"
 
 # ================================
 # 議題清單
