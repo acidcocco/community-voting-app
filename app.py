@@ -15,13 +15,14 @@ ISSUES = [
     "議題二：是否同意調整社區管理費？"
 ]
 
-# 自動偵測 APP_URL
-APP_URL = st.runtime.get_url().rstrip("/")
+# 固定 APP_URL（避免 st.runtime.get_url() 錯誤）
+APP_URL = "https://acidcocco.onrender.com"
 
 # 側邊欄 - QR Code 產生器
 st.sidebar.header("QR Code 產生器")
 
 if st.session_state.data is not None:
+    # 批次產生所有戶號 QR Code
     if st.sidebar.button("產生所有 QR Code 壓縮檔"):
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
@@ -40,6 +41,7 @@ if st.session_state.data is not None:
             mime="application/zip"
         )
 
+    # 單一產生 QR Code
     household_selected = st.sidebar.selectbox(
         "選擇要產生 QR Code 的戶號：",
         st.session_state.data.index.tolist()
@@ -79,6 +81,7 @@ if is_admin:
     if st.session_state.data is None:
         st.warning("請先上傳名冊才能查看投票結果。")
     else:
+        all_results = {}
         for i, issue in enumerate(ISSUES):
             st.subheader(issue)
 
@@ -88,12 +91,15 @@ if is_admin:
                 )
 
             results = st.session_state[f'vote_results_{i}']
+            all_results[issue] = results
 
             if results.empty:
                 st.info("尚無投票紀錄")
             else:
+                # 顯示完整投票明細
                 st.dataframe(results, use_container_width=True)
 
+                # 統計票數
                 vote_count = results["投票"].value_counts().to_dict()
                 agree_weight = results.loc[results["投票"] == "同意", "區分比例"].sum()
                 disagree_weight = results.loc[results["投票"] == "不同意", "區分比例"].sum()
@@ -102,24 +108,32 @@ if is_admin:
                 st.write(f"✅ 同意（加權）：{agree_weight}")
                 st.write(f"❌ 不同意（加權）：{disagree_weight}")
 
-                # --- 畫長條圖 (人數統計) ---
-                fig1, ax1 = plt.subplots()
-                ax1.bar(vote_count.keys(), vote_count.values(), color=["green", "red"])
-                ax1.set_title("投票人數統計")
-                ax1.set_ylabel("人數")
-                st.pyplot(fig1)
+                # 長條圖
+                fig, ax = plt.subplots()
+                results["投票"].value_counts().plot(kind="bar", ax=ax)
+                st.pyplot(fig)
 
-                # --- 畫圓餅圖 (區分比例加權) ---
-                fig2, ax2 = plt.subplots()
-                weights = [agree_weight, disagree_weight]
-                labels = ["同意", "不同意"]
-                ax2.pie(weights, labels=labels, autopct="%.2f%%", colors=["green", "red"])
-                ax2.set_title("加權區分比例分布")
-                st.pyplot(fig2)
+                # 圓餅圖
+                fig, ax = plt.subplots()
+                results["投票"].value_counts().plot(kind="pie", autopct='%1.1f%%', ax=ax)
+                st.pyplot(fig)
 
-            st.divider()
+                st.divider()
 
-    st.stop()
+        # 匯出 Excel 報表
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            for issue, df in all_results.items():
+                df.to_excel(writer, sheet_name=issue[:20], index=False)
+        output.seek(0)
+        st.download_button(
+            "📥 匯出投票結果 Excel 報表",
+            data=output,
+            file_name="vote_results.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    st.stop()  # 管理者模式不會進到一般住戶頁面
 
 # ========= 住戶投票頁 =========
 st.header("住戶投票區")
@@ -136,6 +150,7 @@ if household_id_from_url:
 
             st.subheader("請對以下所有議題進行投票：")
 
+            # 初始化投票紀錄
             for i, issue in enumerate(ISSUES):
                 if f'vote_results_{i}' not in st.session_state:
                     st.session_state[f'vote_results_{i}'] = pd.DataFrame(
